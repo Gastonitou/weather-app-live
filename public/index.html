@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fullstack Weather 🌤️</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+      color: white;
+      min-height: 100vh;
+    }
+    .container { max-width: 500px; margin: 0 auto; padding: 16px; }
+
+    /* ===== HEADER ===== */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+    }
+    .header h1 { font-size: 22px; }
+    .header h1 span { color: #e94560; }
+    .auth-buttons { display: flex; gap: 8px; }
+    .auth-buttons button {
+      padding: 8px 16px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: transparent;
+      color: white;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .auth-buttons button:active { background: rgba(255,255,255,0.1); }
+    .user-info {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+    }
+    .user-info .logout-btn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      background: #e94560;
+      color: white;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    /* ===== SEARCH ===== */
+    .search-box {
+      display: flex;
+      gap: 8px;
+      margin: 16px 0;
+    }
+    .search-box input {
+      flex: 1;
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.08);
+      color: white;
+      font-size: 16px;
+      outline: none;
+    }
+    .search-box input::placeholder { color: #666; }
+    .search-box button {
+      padding: 14px 20px;
+      border: none;
+      border-radius: 12px;
+      background: #e94560;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+    }
+    .search-box button:active { opacity: 0.8; }
+
+    /* ===== WEATHER CARD ===== */
+    .weather-card {
+      background: rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .weather-card .city-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .weather-card .city-name {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .weather-card .city-country {
+      font-size: 14px;
+      color: #888;
+    }
+    .weather-card .fav-btn {
+      background: none;
+      border: 1px solid rgba(255,215,0,0.3);
+      border-radius: 8px;
+      padding: 6px 12px;
+      color: gold;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .weather-card .fav-btn.saved { background: rgba(255,215,0,0.15); }
+    .weather-card .main-display {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 16px 0;
+    }
+    .weather-card .temp { font-size: 64px; font-weight: 800; }
+    .weather-card .temp span { font-size: 28px; }
+    .weather-card .desc { font-size: 16px; color: #ccc; text-transform: capitalize; }
+    .weather-card .emoji { font-size: 64px; }
+    .details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .details .item {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+    }
+    .details .item .label { font-size: 11px; color: #888; text-transform: uppercase; }
+    .details .item .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
+    .details .item .value small { font-size: 12px; font-weight: 400; color: #aaa; }
+
+    /* ===== FORECAST ===== */
+    .forecast {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      margin-bottom: 16px;
+    }
+    .forecast::-webkit-scrollbar { display: none; }
+    .forecast .day {
+      min-width: 90px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 14px;
+      padding: 12px 8px;
+      text-align: center;
+    }
+    .forecast .day .d-name { font-size: 13px; color: #aaa; }
+    .forecast .day .d-emoji { font-size: 28px; margin: 6px 0; }
+    .forecast .day .d-temp { font-size: 18px; font-weight: 700; }
+
+    /* ===== FAVORITES ===== */
+    .fav-section { margin-bottom: 20px; display: none; }
+    .fav-section h3 { font-size: 16px; margin-bottom: 10px; color: gold; }
+    .fav-list {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .fav-list .chip {
+      padding: 8px 16px;
+      background: rgba(255,215,0,0.1);
+      border: 1px solid rgba(255,215,0,0.2);
+      border-radius: 20px;
+      font-size: 14px;
+      cursor: pointer;
+      color: gold;
+    }
+    .fav-list .chip:active { background: rgba(255,215,0,0.2); }
+
+    /* ===== MODALS ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: #1a1a2e;
+      border-radius: 20px;
+      padding: 28px;
+      width: 90%;
+      max-width: 380px;
+    }
+    .modal h2 { font-size: 22px; margin-bottom: 16px; }
+    .modal input {
+      width: 100%;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.08);
+      color: white;
+      font-size: 15px;
+      outline: none;
+    }
+    .modal input::placeholder { color: #666; }
+    .modal button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      background: #e94560;
+      color: white;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+    .modal button:active { opacity: 0.8; }
+    .modal .switch {
+      color: #e94560;
+      text-align: center;
+      margin-top: 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .modal .error-msg {
+      color: #ff6b6b;
+      font-size: 13px;
+      margin-bottom: 8px;
+      display: none;
+    }
+    .modal .close-btn {
+      position: absolute;
+      top: 10px; right: 16px;
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 24px;
+      cursor: pointer;
+      width: auto;
+    }
+
+    /* ===== LOADING ===== */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      display: none;
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 4px solid rgba(255,255,255,0.1);
+      border-top-color: #e94560;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>🌤️ Fullstack <span>Weather</span></h1>
+    <div id="authButtons" class="auth-buttons">
+      <button onclick="showModal('login')">Login</button>
+      <button onclick="showModal('register')">Registrieren</button>
+    </div>
+    <div id="userInfo" class="user-info">
+      <span id="usernameDisplay"></span>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="Stadt eingeben... (z.B. Tunis, Berlin)" />
+    <button onclick="searchWeather()">🔍</button>
+  </div>
+
+  <!-- Favorites -->
+  <div class="fav-section" id="favSection">
+    <h3>⭐ Meine Städte</h3>
+    <div class="fav-list" id="favList"></div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Wetter wird geladen...</p>
+  </div>
+
+  <!-- Weather Card -->
+  <div class="weather-card" id="weatherCard">
+    <div class="city-row">
+      <div>
+        <div class="city-name" id="cityName">---</div>
+        <div class="city-country" id="cityCountry">---</div>
+      </div>
+      <button class="fav-btn" id="favBtn" onclick="toggleFavorite()">⭐ Speichern</button>
+    </div>
+    <div class="main-display">
+      <div>
+        <div class="temp" id="tempDisplay">--<span>°C</span></div>
+        <div class="desc" id="descText">---</div>
+      </div>
+      <div class="emoji" id="weatherEmoji">☀️</div>
+    </div>
+    <div class="details">
+      <div class="item"><div class="label">Gefühlt</div><div class="value" id="feelsLike">--<small>°C</small></div></div>
+      <div class="item"><div class="label">Wind</div><div class="value" id="windSpeed">--<small>km/h</small></div></div>
+      <div class="item"><div class="label">Luftfeuchte</div><div class="value" id="humidity">--<small>%</small></div></div>
+      <div class="item"><div class="label">Druck</div><div class="value" id="pressure">--<small>hPa</small></div></div>
+    </div>
+  </div>
+
+  <!-- Forecast -->
+  <div class="forecast" id="forecastContainer"></div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="authModal">
+  <div class="modal" style="position:relative;">
+    <button class="close-btn" onclick="closeModal()">✕</button>
+    <h2 id="modalTitle">Login</h2>
+    <div class="error-msg" id="authError"></div>
+    <div id="loginForm">
+      <input type="text" id="loginUsername" placeholder="Benutzername">
+      <input type="password" id="loginPassword" placeholder="Passwort">
+      <button onclick="login()">Einloggen</button>
+      <div class="switch" onclick="showModal('register')">Noch kein Konto? Registrieren</div>
+    </div>
+    <div id="registerForm" style="display:none;">
+      <input type="text" id="regUsername" placeholder="Benutzername">
+      <input type="email" id="regEmail" placeholder="Email">
+      <input type="password" id="regPassword" placeholder="Passwort (min. 6 Zeichen)">
+      <button onclick="register()">Registrieren</button>
+      <div class="switch" onclick="showModal('login')">Schon ein Konto? Einloggen</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentCity = '';
+let currentCountry = '';
+let isLoggedIn = false;
+
+// ====== AUTH ======
+async function checkAuth() {
+  const res = await fetch('/api/me');
+  const data = await res.json();
+  if (data.loggedIn) {
+    isLoggedIn = true;
+    document.getElementById('authButtons').style.display = 'none';
+    document.getElementById('userInfo').style.display = 'flex';
+    document.getElementById('usernameDisplay').textContent = '👤 ' + data.user.username;
+    document.getElementById('favSection').style.display = 'block';
+    loadFavorites();
+  }
+}
+
+function showModal(type) {
+  document.getElementById('authModal').classList.add('show');
+  document.getElementById('authError').style.display = 'none';
+  if (type === 'login') {
+    document.getElementById('modalTitle').textContent = 'Login';
+    document.getElementById('loginForm').style.display = 'block';
+    document.getElementById('registerForm').style.display = 'none';
+  } else {
+    document.getElementById('modalTitle').textContent = 'Registrieren';
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('registerForm').style.display = 'block';
+  }
+}
+
+function closeModal() {
+  document.getElementById('authModal').classList.remove('show');
+}
+
+async function login() {
+  const username = document.getElementById('loginUsername').value;
+  const password = document.getElementById('loginPassword').value;
+  if (!username || !password) return;
+
+  const res = await fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+  const data = await res.json();
+  if (data.error) {
+    document.getElementById('authError').textContent = data.error;
+    document.getElementById('authError').style.display = 'block';
+  } else {
+    closeModal();
+    checkAuth();
+  }
+}
+
+async function register() {
+  const username = document.getElementById('regUsername').value;
+  const email = document.getElementById('regEmail').value;
+  const password = document.getElementById('regPassword').value;
+  if (!username || !email || !password) return;
+
+  const res = await fetch('/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, email, password })
+  });
+  const data = await res.json();
+  if (data.error) {
+    document.getElementById('authError').textContent = data.error;
+    document.getElementById('authError').style.display = 'block';
+  } else {
+    closeModal();
+    checkAuth();
+  }
+}
+
+async function logout() {
+  await fetch('/api/logout', { method: 'POST' });
+  isLoggedIn = false;
+  document.getElementById('authButtons').style.display = 'flex';
+  document.getElementById('userInfo').style.display = 'none';
+  document.getElementById('favSection').style.display = 'none';
+}
+
+// ====== WEATHER ======
+async function searchWeather(city) {
+  city = city || document.getElementById('searchInput').value.trim();
+  if (!city) return;
+
+  document.getElementById('weatherCard').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+
+  const res = await fetch('/api/weather/' + encodeURIComponent(city));
+  const data = await res.json();
+
+  document.getElementById('loading').style.display = 'none';
+
+  if (data.error) {
+    alert(data.error);
+    return;
+  }
+
+  displayWeather(data);
+}
+
+function getEmoji(id) {
+  if (id >= 200 && id < 300) return '⛈️';
+  if (id >= 300 && id < 400) return '🌦️';
+  if (id >= 500 && id < 600) return '🌧️';
+  if (id >= 600 && id < 700) return '🌨️';
+  if (id >= 700 && id < 800) return '🌫️';
+  if (id === 800) return '☀️';
+  if (id >= 801 && id < 803) return '⛅';
+  return '☁️';
+}
+
+function displayWeather(data) {
+  currentCity = data.city;
+  currentCountry = data.country;
+
+  document.getElementById('cityName').textContent = `${data.city}, ${data.country}`;
+  document.getElementById('cityCountry').textContent = new Date().toLocaleDateString('de-DE', {
+    weekday: 'long', day: 'numeric', month: 'long'
+  });
+  document.getElementById('tempDisplay').innerHTML = `${data.temp}<span>°C</span>`;
+  document.getElementById('descText').textContent = data.description;
+  document.getElementById('weatherEmoji').textContent = getEmoji(data.condition_id);
+  document.getElementById('feelsLike').innerHTML = `${data.feels_like}<small>°C</small>`;
+  document.getElementById('windSpeed').innerHTML = `${data.wind}<small>km/h</small>`;
+  document.getElementById('humidity').innerHTML = `${data.humidity}<small>%</small>`;
+  document.getElementById('pressure').innerHTML = `${data.pressure}<small>hPa</small>`;
+
+  document.getElementById('weatherCard').style.display = 'block';
+
+  // Check if favorited
+  if (isLoggedIn) {
+    checkFavoriteStatus(data.city);
+  }
+
+  // Forecast
+  const fc = document.getElementById('forecastContainer');
+  fc.innerHTML = '';
+  if (data.forecast) {
+    data.forecast.forEach(d => {
+      const date = new Date(d.date + 'T12:00:00');
+      fc.innerHTML += `
+        <div class="day">
+          <div class="d-name">${date.toLocaleDateString('de-DE', { weekday: 'short' })}</div>
+          <div class="d-emoji">${getEmoji(d.condition_id)}</div>
+          <div class="d-temp">${d.temp}°</div>
+        </div>`;
+    });
+  }
+}
+
+// ====== FAVORITES ======
+async function loadFavorites() {
+  const res = await fetch('/api/favorites');
+  const favorites = await res.json();
+  const container = document.getElementById('favList');
+  container.innerHTML = '';
+  if (favorites.length === 0) {
+    container.innerHTML = '<span style="color:#666;font-size:14px;">Keine Städte gespeichert</span>';
+    return;
+  }
+  favorites.forEach(f => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.textContent = `${f.city} ${f.country ? '🇪🇺' : ''}`;
+    chip.onclick = () => searchWeather(f.city);
+    container.appendChild(chip);
+  });
+}
+
+async function toggleFavorite() {
+  if (!isLoggedIn) {
+    showModal('login');
+    return;
+  }
+  const btn = document.getElementById('favBtn');
+  if (btn.classList.contains('saved')) {
+    await fetch('/api/favorites/' + encodeURIComponent(currentCity), { method: 'DELETE' });
+    btn.classList.remove('saved');
+    btn.textContent = '⭐ Speichern';
+  } else {
+    await fetch('/api/favorites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ city: currentCity, country: currentCountry })
+    });
+    btn.classList.add('saved');
+    btn.textContent = '⭐ Gespeichert';
+  }
+  loadFavorites();
+}
+
+async function checkFavoriteStatus(city) {
+  const res = await fetch('/api/favorites');
+  const favs = await res.json();
+  const btn = document.getElementById('favBtn');
+  if (favs.some(f => f.city === city)) {
+    btn.classList.add('saved');
+    btn.textContent = '⭐ Gespeichert';
+  } else {
+    btn.classList.remove('saved');
+    btn.textContent = '⭐ Speichern';
+  }
+}
+
+// Enter to search
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') searchWeather();
+});
+
+// Auto-check auth on load
+checkAuth();
+</script>
+</body>
+</html>
